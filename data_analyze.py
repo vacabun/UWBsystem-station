@@ -2,6 +2,7 @@
 import json
 import logging
 import time
+import socket
 
 import location
 import measure_data
@@ -83,16 +84,27 @@ class DataAnalyze:
         self.data[res.label_address].append(res)
 
         if len(self.data[res.label_address]) >= 4:
-            [x, y] = self._cal_location_4(res.label_address, self._get_near_4_address(res.label_address))
-            print([res.label_address, x, y, len(self.data[res.label_address])])
+            # [x, y] = self._cal_location_4(res.label_address, self._get_near_4_address(res.label_address))
+            node_cal = self._get_group_4_address(res.label_address)
+            if not node_cal == [0, 0, 0, 0]:
+                [x, y] = self._cal_location_4(res.label_address, node_cal)
+                print([res.label_address, x, y, len(self.data[res.label_address])])
 
-            msg = '\"asctime\": \"{asctime}\",\"frame_num\": \"{frame_num}\",\"label_address\": \"{label_address}\",' \
-                  '\"x\": \"{x}\",\"y\": \"{y}\"'.format(asctime=time.asctime(), frame_num=res.frame_num,
-                                                         label_address=res.label_address, x=x, y=y)
-            msg = '{' + msg + '}'
-            # print(msg)
-            sc = network.SocketClient("192.168.31.127", 7999)
-            sc.send(msg)
+                with open("./config.json", 'r') as load_f:
+                    config = json.load(load_f)
+
+                ip = config['sever_ip']
+                port = config['sever_port']
+
+                try:
+                    msg = '\"asctime\": \"{asctime}\",\"frame_num\": \"{frame_num}\",\"label_address\": \"{label_address}\",' \
+                          '\"x\": \"{x}\",\"y\": \"{y}\"'.format(asctime=time.asctime(), frame_num=res.frame_num,
+                                                                 label_address=res.label_address, x=x, y=y)
+                    msg = '{' + msg + '}'
+                    sc = network.SocketClient(ip, port)
+                    sc.send(msg)
+                except socket.error as err:
+                    print(err)
 
     def _cal_location_4(self, label_address: int, node_address_4: [int, int, int, int]) -> [int, int]:
         loca = location.Location()
@@ -110,11 +122,13 @@ class DataAnalyze:
         with open("./anthor.json", 'r') as load_f:
             anthors = json.load(load_f)
         anthor_4 = []
+
         for i in range(4):
             for anthor in anthors:
                 if anthor['address'] == node_address_4[i]:
                     anthor_4.append([anthor['x'], anthor['y'], anthor['z']])
                     break
+
         loca.set_anthor_coor(anthor_4)
 
         return loca.trilateration_4()
@@ -124,6 +138,7 @@ class DataAnalyze:
         d = [0xfff, 0xfff, 0xfff, 0xfff]
         address = [0, 0, 0, 0]
         index = 0
+
         for i in range(4):
             for j in range(i, len(datas)):
                 if datas[j].distance < d[i]:
@@ -131,6 +146,33 @@ class DataAnalyze:
                     address[i] = datas[j].node_address
                     index = j
             datas[index], datas[i] = datas[i], datas[index]
+
+        return address
+
+    def _get_group_4_address(self, label_address: int) -> [int, int, int, int]:
+        datas = self.data[label_address]
+
+        address = [0, 0, 0, 0]
+
+        with open("./group.json", 'r') as load_f:
+            rooms = json.load(load_f)
+
+        res_address = []
+        for i in range(len(datas)):
+            res_address.append(datas[i].node_address)
+
+        room_vote = {}
+
+        for i in range(len(rooms)):
+            room_vote[rooms[i]['roomId']] = []
+            for j in range(len(rooms[i]['nodeId'])):
+                if rooms[i]['nodeId'][j] in res_address:
+                    room_vote[rooms[i]['roomId']].append(rooms[i]['nodeId'][j])
+
+        for k in room_vote.keys():
+            if len(room_vote[k]) >= 4:
+                return room_vote[k][0:4]
+
         return address
 
     def _analyze_measure_data(self) -> measure_data.MeasureData:
