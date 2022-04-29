@@ -9,7 +9,7 @@ import measure_data
 import sql_helper
 import network
 
-
+debug_f = True
 class DataAnalyze:
     def __init__(self):
         self.header = b'\x4d\x7b'
@@ -27,7 +27,16 @@ class DataAnalyze:
         self.counter = 0
         self.receive_data = []
 
-    def analyze(self, data):
+    def analyze(self, data: int):
+        '''Analyze 1byte receive data
+
+        Args:
+            data: 1byte receive data
+
+        Returns: 
+            none
+        '''
+
         if data == 0xfe:
             self.escape = True
             return
@@ -59,52 +68,69 @@ class DataAnalyze:
     def _process(self):
         if self.receive_data[0] == 82:
             if len(self.receive_data) == 7:
-                self.process_measure_data()
+                self._process_measure_data()
 
-    def process_measure_data(self):
+    def _process_measure_data(self):
         res = self._analyze_measure_data()
+        data = self.data
+        label_address = res.label_address
 
-        print('{asctime}:\t{label_address}\t<--->\t{node_address}\t[{frame_num}]:\t{distance}'.format(
-            asctime=res.asctime, label_address=res.label_address, node_address=res.node_address,
-            frame_num=res.frame_num, distance=res.distance))
-        logging.debug('{asctime}:\t{label_address}\t<--->\t{node_address}\t[{frame_num}]:\t{distance}'.format(
-            asctime=res.asctime, label_address=res.label_address, node_address=res.node_address,
-            frame_num=res.frame_num, distance=res.distance))
+        # debug log out
+        if debug_f:
+            print('{asctime}:\t{label_address}\t<--->\t{node_address}\t[{frame_num}]:\t{distance}'.format(
+                asctime=res.asctime, label_address=res.label_address, node_address=res.node_address,
+                frame_num=res.frame_num, distance=res.distance))
+            logging.debug('{asctime}:\t{label_address}\t<--->\t{node_address}\t[{frame_num}]:\t{distance}'.format(
+                asctime=res.asctime, label_address=res.label_address, node_address=res.node_address,
+                frame_num=res.frame_num, distance=res.distance))
 
+        # sql
         helper = sql_helper.SqlHelper()
         helper.add_data(res)
 
-        if not res.label_address in self.data.keys():
-            self.data[res.label_address] = []
-        elif self.data[res.label_address][0].frame_num != res.frame_num:
-            if len(self.data[res.label_address]) < 4:
-                print('label' + str(res.label_address) + '   packet loss')
-            self.data[res.label_address] = []
+        # new label join
+        if not label_address in data.keys():
+            data[label_address] = []
 
-        self.data[res.label_address].append(res)
+        # new frame
+        elif self.data[label_address][0].frame_num != res.frame_num:
+            # packet loss
+            if len(self.data[label_address]) < 4:
+                if debug_f:
+                    print('label {label_address} packet loss'.format(label_address=label_address))
+            # clean res data list
+            data[label_address] = []
+
+        data[label_address].append(res)
 
         if len(self.data[res.label_address]) >= 4:
-            # [x, y] = self._cal_location_4(res.label_address, self._get_near_4_address(res.label_address))
-            node_cal = self._get_group_4_address(res.label_address)
-            if not node_cal == [0, 0, 0, 0]:
-                [x, y] = self._cal_location_4(res.label_address, node_cal)
-                print([res.label_address, x, y, len(self.data[res.label_address])])
+            self._cal_location(res.label_address)
 
-                with open("./config.json", 'r') as load_f:
-                    config = json.load(load_f)
+    def _cal_location(self, label_address: int):
+        # node_cal = self._get_near_4_address(res.label_address)
+        data = self.data
+        frame_num = data[label_address][0].frame_num
+        node_cal = self._get_group_4_address(label_address)
 
-                ip = config['sever_ip']
-                port = config['sever_port']
+        if not node_cal == [0, 0, 0, 0]:
+            [x, y] = self._cal_location_4(label_address, node_cal)
+            print([label_address, x, y, len(self.data[label_address])])
 
-                try:
-                    msg = '\"asctime\": \"{asctime}\",\"frame_num\": \"{frame_num}\",\"label_address\": \"{label_address}\",' \
-                          '\"x\": \"{x}\",\"y\": \"{y}\"'.format(asctime=time.asctime(), frame_num=res.frame_num,
-                                                                 label_address=res.label_address, x=x, y=y)
-                    msg = '{' + msg + '}'
-                    sc = network.SocketClient(ip, port)
-                    sc.send(msg)
-                except socket.error as err:
-                    print(err)
+            with open("./config.json", 'r') as load_f:
+                config = json.load(load_f)
+
+            ip = config['sever_ip']
+            port = config['sever_port']
+
+            try:
+                msg = '\"asctime\": \"{asctime}\",\"frame_num\": \"{frame_num}\",\"label_address\": \"{label_address}\",' \
+                        '\"x\": \"{x}\",\"y\": \"{y}\"'.format(asctime=time.asctime(), frame_num=frame_num,
+                                                                label_address=label_address, x=x, y=y)
+                msg = '{' + msg + '}'
+                sc = network.SocketClient(ip, port)
+                sc.send(msg)
+            except socket.error as err:
+                print(err)
 
     def _cal_location_4(self, label_address: int, node_address_4: [int, int, int, int]) -> [int, int]:
         loca = location.Location()
@@ -114,13 +140,14 @@ class DataAnalyze:
         distance = [0, 0, 0, 0]
         for i in range(4):
             for j in range(len(datas)):
-                if datas[i].node_address == node_address_4[i]:
-                    distance[i] = datas[i].distance / 100
+                if datas[j].node_address == node_address_4[i]:
+                    distance[i] = datas[j].distance / 100
                     break
         loca.set_distances(distance)
 
         with open("./anthor.json", 'r') as load_f:
             anthors = json.load(load_f)
+
         anthor_4 = []
 
         for i in range(4):

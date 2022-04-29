@@ -2,30 +2,30 @@
     {
         "enable": false,
         "address": 1,
-        "x": 0.6,
-        "y": 10.5,
-        "z": 1.8
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1
     },
     {
         "enable": true,
         "address": 2,
-        "x": 8.5,
-        "y": 7.8,
-        "z": 1.6
+        "x": 8.4,
+        "y": 0,
+        "z": 1
     },
     {
         "enable": true,
         "address": 3,
-        "x": 8.85,
-        "y": 9.6,
-        "z": 1.6
+        "x": 8.4,
+        "y": 7.2,
+        "z": 1
     },
     {
-        "enable": false,
+        "enable": true,
         "address": 4,
-        "x": 8.6,
-        "y": 3.6,
-        "z": 0
+        "x": 0,
+        "y": 4.7,
+        "z": 1
     },
     {
         "enable": false,
