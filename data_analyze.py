@@ -127,6 +127,7 @@ class DataAnalyze:
                         '\"x\": \"{x}\",\"y\": \"{y}\"'.format(asctime=time.asctime(), frame_num=frame_num,
                                                                 label_address=label_address, x=x, y=y)
                 msg = '{' + msg + '}'
+                logging.debug(msg)
                 sc = network.SocketClient(ip, port)
                 sc.send(msg)
             except socket.error as err:

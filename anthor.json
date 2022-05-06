@@ -1,6 +1,6 @@
 [
     {
-        "enable": false,
+        "enable": true,
         "address": 1,
         "x": 0.0,
         "y": 0.0,
@@ -9,22 +9,22 @@
     {
         "enable": true,
         "address": 2,
-        "x": 8.4,
-        "y": 0,
+        "x": 0.0,
+        "y": 3.1,
         "z": 1
     },
     {
         "enable": true,
         "address": 3,
-        "x": 8.4,
-        "y": 7.2,
+        "x": 5.0,
+        "y": 3.1,
         "z": 1
     },
     {
         "enable": true,
         "address": 4,
-        "x": 0,
-        "y": 4.7,
+        "x": 5.0,
+        "y": 0,
         "z": 1
     },
     {
