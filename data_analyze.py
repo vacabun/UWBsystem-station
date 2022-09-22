@@ -3,11 +3,13 @@ import json
 import logging
 import time
 import socket
+import csv
 
 import location
 import measure_data
 import sql_helper
 import network
+from filter import filter
 
 debug_f = True
 class DataAnalyze:
@@ -19,6 +21,7 @@ class DataAnalyze:
         self.counter = 0
         self.receive_data = []
         self.data = {}
+        self.filterData = {}
         self.escape = False
 
     def _clean_receive(self):
@@ -73,7 +76,10 @@ class DataAnalyze:
     def _process_measure_data(self):
         res = self._analyze_measure_data()
         data = self.data
+        filterData = self.filterData
         label_address = res.label_address
+        node_address = res.node_address
+        distance = res.distance
 
         # debug log out
         if debug_f:
@@ -87,11 +93,27 @@ class DataAnalyze:
         # sql
         helper = sql_helper.SqlHelper()
         helper.add_data(res)
+        
+        
+        if not label_address in filterData.keys():
+            filterData[label_address] = {}
+
+        if not label_address in filterData[label_address].keys():
+            filterData[label_address][node_address] = []
+
+        filterData[label_address][node_address].append(distance)
+        
+        _,filterdistance= filter(filterData[label_address][node_address])
+
+        print('[filter] {asctime}:\t{label_address}\t<--->\t{node_address}\t[{frame_num}]:\t{filterdistance}'.format(
+                asctime=res.asctime, label_address=res.label_address, node_address=res.node_address,
+                frame_num=res.frame_num, filterdistance=filterdistance))
+
 
         # new label join
         if not label_address in data.keys():
             data[label_address] = []
-
+            
         # new frame
         elif self.data[label_address][0].frame_num != res.frame_num:
             # packet loss
@@ -111,10 +133,15 @@ class DataAnalyze:
         data = self.data
         frame_num = data[label_address][0].frame_num
         node_cal = self._get_group_4_address(label_address)
-
+        
         if not node_cal == [0, 0, 0, 0]:
             [x, y] = self._cal_location_4(label_address, node_cal)
+            
             print([label_address, x, y, len(self.data[label_address])])
+
+            with open("log/res.csv", mode="w", encoding="utf-8-sig", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow([time.asctime(), frame_num, label_address, x, y])
 
             with open("./config.json", 'r') as load_f:
                 config = json.load(load_f)
