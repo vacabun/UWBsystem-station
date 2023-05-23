@@ -6,12 +6,14 @@ import socket
 import csv
 
 import location
-import measure_data
+import typedef
 import sql_helper
 import network
 from filter import filter
 
 debug_f = True
+
+
 class DataAnalyze:
     def __init__(self):
         self.header = b'\x4d\x7b'
@@ -31,15 +33,7 @@ class DataAnalyze:
         self.receive_data = []
 
     def analyze(self, data: int):
-        '''Analyze 1byte receive data
-
-        Args:
-            data: 1byte receive data
-
-        Returns: 
-            none
-        '''
-
+        
         if data == 0xfe:
             self.escape = True
             return
@@ -73,6 +67,16 @@ class DataAnalyze:
             if len(self.receive_data) == 7:
                 self._process_measure_data()
 
+    def _analyze_measure_data(self) -> typedef.MeasureData:
+        label_address = self.receive_data[1]
+        node_address = self.receive_data[2]
+        frame_num = (self.receive_data[3] << 8) + self.receive_data[4]
+        asctime = time.asctime()
+        distance = (self.receive_data[5] << 8) + self.receive_data[6]
+        res = typedef.MeasureData(label_address=label_address, node_address=node_address, frame_num=frame_num,
+                                       asctime=asctime, distance=distance)
+        return res
+
     def _process_measure_data(self):
         res = self._analyze_measure_data()
         data = self.data
@@ -93,8 +97,7 @@ class DataAnalyze:
         # sql
         helper = sql_helper.SqlHelper()
         helper.add_data(res)
-        
-        
+
         if not label_address in filterData.keys():
             filterData[label_address] = {}
 
@@ -102,24 +105,24 @@ class DataAnalyze:
             filterData[label_address][node_address] = []
 
         filterData[label_address][node_address].append(distance)
-        
-        _,filterdistance= filter(filterData[label_address][node_address])
+
+        _, filterdistance = filter(filterData[label_address][node_address])
 
         print('[filter] {asctime}:\t{label_address}\t<--->\t{node_address}\t[{frame_num}]:\t{filterdistance}'.format(
-                asctime=res.asctime, label_address=res.label_address, node_address=res.node_address,
-                frame_num=res.frame_num, filterdistance=filterdistance))
-
+            asctime=res.asctime, label_address=res.label_address, node_address=res.node_address,
+            frame_num=res.frame_num, filterdistance=filterdistance))
 
         # new label join
         if not label_address in data.keys():
             data[label_address] = []
-            
+
         # new frame
         elif self.data[label_address][0].frame_num != res.frame_num:
             # packet loss
             if len(self.data[label_address]) < 4:
                 if debug_f:
-                    print('label {label_address} packet loss'.format(label_address=label_address))
+                    print('label {label_address} packet loss'.format(
+                        label_address=label_address))
             # clean res data list
             data[label_address] = []
 
@@ -133,15 +136,16 @@ class DataAnalyze:
         data = self.data
         frame_num = data[label_address][0].frame_num
         node_cal = self._get_group_4_address(label_address)
-        
+
         if not node_cal == [0, 0, 0, 0]:
             [x, y] = self._cal_location_4(label_address, node_cal)
-            
+
             print([label_address, x, y, len(self.data[label_address])])
 
             with open("log/res.csv", mode="w", encoding="utf-8-sig", newline="") as f:
                 writer = csv.writer(f)
-                writer.writerow([time.asctime(), frame_num, label_address, x, y])
+                writer.writerow(
+                    [time.asctime(), frame_num, label_address, x, y])
 
             with open("./config.json", 'r') as load_f:
                 config = json.load(load_f)
@@ -151,8 +155,8 @@ class DataAnalyze:
 
             try:
                 msg = '\"asctime\": \"{asctime}\",\"frame_num\": \"{frame_num}\",\"label_address\": \"{label_address}\",' \
-                        '\"x\": \"{x}\",\"y\": \"{y}\"'.format(asctime=time.asctime(), frame_num=frame_num,
-                                                                label_address=label_address, x=x, y=y)
+                    '\"x\": \"{x}\",\"y\": \"{y}\"'.format(asctime=time.asctime(), frame_num=frame_num,
+                                                           label_address=label_address, x=x, y=y)
                 msg = '{' + msg + '}'
                 logging.debug(msg)
                 sc = network.SocketClient(ip, port)
@@ -229,13 +233,3 @@ class DataAnalyze:
                 return room_vote[k][0:4]
 
         return address
-
-    def _analyze_measure_data(self) -> measure_data.MeasureData:
-        label_address = self.receive_data[1]
-        node_address = self.receive_data[2]
-        frame_num = (self.receive_data[3] << 8) + self.receive_data[4]
-        asctime = time.asctime()
-        distance = (self.receive_data[5] << 8) + self.receive_data[6]
-        res = measure_data.MeasureData(label_address=label_address, node_address=node_address, frame_num=frame_num,
-                                       asctime=asctime, distance=distance)
-        return res

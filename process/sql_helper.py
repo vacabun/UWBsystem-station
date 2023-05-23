@@ -1,7 +1,7 @@
 import sqlite3
 
-import measure_data
-
+from typedef import position
+from typedef import MeasureData
 
 class SqlHelper:
     def __init__(self):
@@ -46,7 +46,7 @@ class SqlHelper:
         else:
             return False
 
-    def add_data(self, data: measure_data.MeasureData):
+    def add_data(self, data: MeasureData):
         if not self._find_data_table(data.label_address):
             self._create_data_table(data.label_address)
 
