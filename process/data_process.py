@@ -10,7 +10,7 @@ from process.location import Location
 from process.config import load_config
 
 measure_data_dict = {}
-anchors = {}
+anchors_groups = {}
 label_type = {}
 
 
@@ -19,14 +19,17 @@ def load_tag_config():
     df = pandas.read_excel('config/label.xlsx')
     for col_name, col_data in df.items():
         if isinstance(col_name, int):
-            label_type[col_name] = col_data[0]
+            label_type[col_name] = int(col_data[0])
 
 
 def load_anchor_config():
-    global anchors
+    global anchors_groups
     dfs = pandas.read_excel('config/anchor.xlsx', sheet_name=None)
     for key, df in dfs.items():
-        anchors[key] = []
+        anchors_groups[key] = {}
+        anchors_groups[key]['scenario'] = int(df.loc[0, 'scenario'])
+        anchors_groups[key]['level'] = int(df.loc[0, 'level'])
+        anchors_groups[key]['anchors'] = []
         for col_name, col_data in df.items():
             if isinstance(col_name, int):
                 anchor = {}
@@ -34,8 +37,8 @@ def load_anchor_config():
                 anchor['x'] = col_data.values[0]
                 anchor['y'] = col_data.values[1]
                 anchor['z'] = col_data.values[2]
-                anchors[key].append(anchor)
-
+                anchors_groups[key]['anchors'].append(anchor)
+    print(anchors_groups)
 
 load_tag_config()
 load_anchor_config()
@@ -80,10 +83,10 @@ def process_measure_data(measure_data):
     # cal position
     if len(measure_data_dict[label_address]) >= 4:
         if res := cal_position(label_address):
-            process_res(res[0], res[1], res[2], res[3])
+            process_res(res[0], res[1], res[2], res[3], res[4], res[5])
 
 
-def process_res(x, y, frame_num, label_address):
+def process_res(x, y, frame_num, label_address, scenario, level):
     global label_type
     with open("res.csv", mode="a", encoding="utf-8-sig", newline="") as f:
         writer = csv.writer(f)
@@ -101,14 +104,15 @@ def process_res(x, y, frame_num, label_address):
             'asc_time': time.strftime("%H:%M:%S %d-%m-%Y", time.localtime()),
             'role': int(role),
             'label_id': label_address,
-            'scenario': 0,
-            'level': 2,
+            'scenario': scenario,
+            'level': level,
             'x': x,
             'y': y,
             'z': 0.5
         }
         msg = json.dumps(msg_dict)
         logging.debug(msg)
+        print(msg)
         sc = SocketClient(ip, port)
         sc.send(msg)
     except socket.error as err:
@@ -116,10 +120,31 @@ def process_res(x, y, frame_num, label_address):
 
 
 def cal_position(label_address: int):
-    global anchors
-    # get cal node address
-    address_list = get_address_list(label_address)
-    address_list = get_near_4_address(address_list, label_address)
+    global anchors_groups
+
+    # get all address list
+    address_list_all = get_address_list(label_address)
+
+    # group addresses
+    address_list_groups = {}
+    for key , value in anchors_groups.items():
+        address_list_groups[key] = []
+        for anchor in value['anchors']:
+            if anchor['id'] in address_list_all:
+                address_list_groups[key].append(anchor['id'])
+
+    # select the group with a large number
+    address_list = []
+    group_str = ''
+    for key , value in anchors_groups.items():
+        if len(address_list_groups[key]) > len(address_list):
+            address_list = address_list_groups[key]
+            group_str = key
+    
+    if len(address_list) < 4:
+        return None
+    elif len(address_list) > 4:
+        address_list = get_near_4_address(address_list, label_address)
 
     frame_num = measure_data_dict[label_address][0].frame_num
     measure_data_list = measure_data_dict[label_address]
@@ -138,19 +163,20 @@ def cal_position(label_address: int):
             if measure_data.node_address == address:
                 distance_list.append(measure_data.distance / 100)
                 break
+            
     for address in address_list:
-        for key, anchor_list in anchors.items():
-            for anchor in anchor_list:
-                if anchor['id'] == address:
-                    anchor_position_list.append(
-                        [anchor['x'], anchor['y'], anchor['z']])
-                    break
+        for anchor in anchors_groups[group_str]['anchors']:
+            if anchor['id'] == address:
+                anchor_position_list.append(
+                    [anchor['x'], anchor['y'], anchor['z']])
+                break
     location_helper.set_distances(distance_list)
     location_helper.set_anthor_coor(anchor_position_list)
 
     [x, y] = location_helper.trilateration_4()
 
-    return [x, y, frame_num, label_address]
+    return [x, y, frame_num, label_address, anchors_groups[group_str]['scenario'], anchors_groups[group_str]['level']]
+
 
 
 def get_address_list(label_address):

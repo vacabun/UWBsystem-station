@@ -6,6 +6,7 @@ import sys
 import serial
 import serial.tools.list_ports
 import pandas
+
 from process.sql_helper import SqlHelper
 from process.data_analyze import DataAnalyze
 from process.data_process import process_measure_data
@@ -31,7 +32,8 @@ def main_service(com, baud):
         test_c_list += [0x4d, 0x7b] + [82, 2, 4, 0, frame_num, 0, 25] + [0x7d]
         test_c_list += [0x4d, 0x7b] + [82, 2, 5, 0, frame_num, 0, 26] + [0x7d]
         test_c_list += [0x4d, 0x7b] + [82, 2, 6, 0, frame_num, 0, 27] + [0x7d]
-
+        test_c_list += [0x4d, 0x7b] + [82, 2, 11, 0, frame_num, 0, 26] + [0x7d]
+        test_c_list += [0x4d, 0x7b] + [82, 2, 12, 0, frame_num, 0, 27] + [0x7d]
         frame_num = frame_num+1
         if frame_num == 125:
             frame_num = 0
@@ -41,7 +43,6 @@ def main_service(com, baud):
             if measure_data := data_analyze.analyze(c):
                 sql_helper.add_data(measure_data)
                 process_measure_data(measure_data)
-
         time.sleep(1)
 
 
