@@ -9,9 +9,11 @@ import sys
 import serial
 import serial.tools.list_ports
 import json
-import pandas
 
+from process.config import load_config
+from process.sql_helper import SqlHelper
 from process.data_analyze import DataAnalyze
+from process.data_process import process_measure_data
 
 # debug log output
 logging.basicConfig(level=logging.DEBUG,
@@ -34,23 +36,17 @@ def main_service(com, baud):
 
     # # read data.
     data_analyze = DataAnalyze()
-
+    sql_helper = SqlHelper()
+    
     while (True):
         try:
             rev = ser.read_all()
             for c in rev:
-                data_analyze.analyze(c)
-            # char_rev = ser.read(1)
-            # data_analyze.analyze(char_rev[0])
-
+                if measure_data := data_analyze.analyze(c):
+                    sql_helper.add_data(measure_data)
+                    process_measure_data(measure_data)
         except Exception as e:
             logging.error(e)
-
-
-def load_config():
-    df = pandas.read_excel('config/config.xlsx')
-    return df.loc[0, ['server_ip', 'server_port', 'com', ]].to_dict()
-
 
 if __name__ == '__main__':
 

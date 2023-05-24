@@ -7,7 +7,6 @@ class MeasureData:
         self.asctime = asctime
         self.distance = distance
 
-
 class position:
     def __init__(self, x: float, y: float, z: float):
         self.x = x

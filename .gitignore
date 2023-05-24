@@ -2,3 +2,4 @@
 .venv
 *.sqlite
 log.txt
+*__pycache__

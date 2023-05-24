@@ -1,7 +1,7 @@
 import sqlite3
 
-from typedef import position
-from typedef import MeasureData
+from process.typedef import position
+from process.typedef import MeasureData
 
 class SqlHelper:
     def __init__(self):
