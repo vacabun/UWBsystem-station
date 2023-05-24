@@ -3,3 +3,4 @@
 *.sqlite
 log.txt
 *__pycache__
+res.csv
