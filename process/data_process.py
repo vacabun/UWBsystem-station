@@ -44,7 +44,7 @@ load_tag_config()
 load_anchor_config()
 
 
-def process_measure_data(measure_data):
+def process_measure_data(measure_data,sc):
 
     global measure_data_dict
     asctime = measure_data.asctime
@@ -83,18 +83,18 @@ def process_measure_data(measure_data):
     # cal position
     if len(measure_data_dict[label_address]) >= 4:
         if res := cal_position(label_address):
-            process_res(res[0], res[1], res[2], res[3], res[4], res[5])
+            process_res(res[0], res[1], res[2], res[3], res[4], res[5], sc)
 
 
-def process_res(x, y, frame_num, label_address, scenario, level):
+def process_res(x, y, frame_num, label_address, scenario, level , sc):
     global label_type
     with open("res.csv", mode="a", encoding="utf-8-sig", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(
             [time.asctime(), frame_num, label_address, x, y])
-    config = load_config()
-    ip = config['server_ip']
-    port = config['server_port']
+    # config = load_config()
+    # ip = config['server_ip']
+    # port = config['server_port']
     role = 1
     if label_address in label_type.keys():
         role = label_type[label_address]
@@ -112,11 +112,14 @@ def process_res(x, y, frame_num, label_address, scenario, level):
         }
         msg = json.dumps(msg_dict)
         logging.debug(msg)
+        msg=msg+'\r\n'
         print(msg)
-        sc = SocketClient(ip, port)
+        # sc = SocketClient(ip, port)
         sc.send(msg)
     except socket.error as err:
         print(err)
+    except Exception as e:
+        logging.error(e)
 
 
 def cal_position(label_address: int):
@@ -143,7 +146,7 @@ def cal_position(label_address: int):
     
     if len(address_list) < 4:
         return None
-    elif len(address_list) > 4:
+    elif len(address_list) >= 4:
         address_list = get_near_4_address(address_list, label_address)
 
     frame_num = measure_data_dict[label_address][0].frame_num

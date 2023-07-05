@@ -8,11 +8,19 @@ class SocketClient:
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sever_ip = sever_ip
         self.sever_port = sever_port
-
-    def send(self, msg: string):
         try:
             self.s.connect((self.sever_ip, self.sever_port))
-            self.s.send(msg.encode())
-            self.s.close()
         except socket.error as msg:
             print(msg)
+        except Exception as e:
+            logging.error(e)
+    def send(self, msg: string):
+        try:
+            if self.s.getpeername():
+                self.s.send(msg.encode())
+            else:
+                self.s.connect((self.sever_ip, self.sever_port))
+        except socket.error as msg:
+            print(msg)
+        except Exception as e:
+            logging.error(e)

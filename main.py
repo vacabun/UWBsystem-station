@@ -14,7 +14,8 @@ from process.config import load_config
 from process.sql_helper import SqlHelper
 from process.data_analyze import DataAnalyze
 from process.data_process import process_measure_data
-
+from process.network import SocketClient
+from process.config import load_config
 # debug log output
 logging.basicConfig(level=logging.DEBUG,
                     filename='log.txt',
@@ -37,14 +38,19 @@ def main_service(com, baud):
     # # read data.
     data_analyze = DataAnalyze()
     sql_helper = SqlHelper()
-    
+
+    config = load_config()
+    ip = config['server_ip']
+    port = config['server_port']
+    sc = SocketClient(ip, port)
+
     while (True):
         try:
             rev = ser.read_all()
             for c in rev:
                 if measure_data := data_analyze.analyze(c):
                     sql_helper.add_data(measure_data)
-                    process_measure_data(measure_data)
+                    process_measure_data(measure_data,sc)
         except Exception as e:
             logging.error(e)
 

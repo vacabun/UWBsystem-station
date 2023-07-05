@@ -48,6 +48,9 @@ class Location:
         B = numpy.array(B)
         A_pseudo = numpy.linalg.pinv(A)
         self.result = numpy.dot(A_pseudo, B)
+        # print(self.result)
+        # print(self.distances)
+        # print(self.position)
         result_x = self.result[0]
         result_y = self.result[1]
         # return x, y position
