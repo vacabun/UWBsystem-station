@@ -1,9 +1,7 @@
 # UWBsystem-station
 
 ``` bash
-pip install virtualenv
-
-virtualenv .venv 
+python3 -m venv .venv
 
 source .venv/bin/activate
 
