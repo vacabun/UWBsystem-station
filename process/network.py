@@ -1,6 +1,6 @@
 import socket
 import string
-import sys
+import logging
 
 
 class SocketClient:
@@ -10,17 +10,18 @@ class SocketClient:
         self.sever_port = sever_port
         try:
             self.s.connect((self.sever_ip, self.sever_port))
-        except socket.error as msg:
-            print(msg)
+        except socket.error as e:
+            print(e)
         except Exception as e:
             logging.error(e)
+
     def send(self, msg: string):
         try:
+            if not self.s.getpeername():
+                self.s.connect((self.sever_ip, self.sever_port))
             if self.s.getpeername():
                 self.s.send(msg.encode())
-            else:
-                self.s.connect((self.sever_ip, self.sever_port))
-        except socket.error as msg:
-            print(msg)
+        except socket.error as e:
+            print(e)
         except Exception as e:
             logging.error(e)

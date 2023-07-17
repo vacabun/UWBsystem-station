@@ -40,11 +40,12 @@ def load_anchor_config():
                 anchors_groups[key]['anchors'].append(anchor)
     print(anchors_groups)
 
+
 load_tag_config()
 load_anchor_config()
 
 
-def process_measure_data(measure_data,sc):
+def process_measure_data(measure_data, sc):
 
     global measure_data_dict
     asctime = measure_data.asctime
@@ -69,21 +70,24 @@ def process_measure_data(measure_data,sc):
     # new label join
     if label_address not in measure_data_dict.keys():
         measure_data_dict[label_address] = []
-    # new frame
-    elif measure_data_dict[label_address][0].frame_num != frame_num:
-        # packet loss
-        if len(measure_data_dict[label_address]) < 4:
-            logging.warning('label {label_address} packet loss'.format(
-                label_address=label_address))
-        # clean res data list
-        measure_data_dict[label_address] = []
-    # save measure data.
-    measure_data_dict[label_address].append(measure_data)
+
+    # refresh measure_data
+    refresh = False
+    for measure_data_ in measure_data_dict[label_address]:
+        if node_address == measure_data_.node_address:
+            measure_data_ = measure_data
+            refresh = True
+            break
+    if not refresh:
+        # save measure data.
+        measure_data_dict[label_address].append(measure_data)
 
     # cal position
     if len(measure_data_dict[label_address]) >= 4:
         if res := cal_position(label_address):
             process_res(res[0], res[1], res[2], res[3], res[4], res[5], sc)
+        # clean res data list
+        measure_data_dict[label_address] = []
 
 
 def process_res(x, y, frame_num, label_address, scenario, level , sc):
@@ -112,7 +116,7 @@ def process_res(x, y, frame_num, label_address, scenario, level , sc):
         }
         msg = json.dumps(msg_dict)
         logging.debug(msg)
-        msg=msg+'\r\n'
+        msg = msg+'\r\n'
         print(msg)
         # sc = SocketClient(ip, port)
         sc.send(msg)
@@ -166,7 +170,7 @@ def cal_position(label_address: int):
             if measure_data.node_address == address:
                 distance_list.append(measure_data.distance / 100)
                 break
-            
+
     for address in address_list:
         for anchor in anchors_groups[group_str]['anchors']:
             if anchor['id'] == address:
@@ -179,7 +183,6 @@ def cal_position(label_address: int):
     [x, y] = location_helper.trilateration_4()
 
     return [x, y, frame_num, label_address, anchors_groups[group_str]['scenario'], anchors_groups[group_str]['level']]
-
 
 
 def get_address_list(label_address):

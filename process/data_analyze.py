@@ -34,7 +34,7 @@ class DataAnalyze:
 
         if data == 0xfe:
             self.escape = True
-            return
+            return None
         if self.escape:
             if data == 0xFD:
                 data = 0xFF
@@ -61,6 +61,8 @@ class DataAnalyze:
                 measure_data = self.package_measure_data()
                 self._clean_receive()
                 return measure_data
+            else:
+                self._clean_receive()
         return None
 
     def package_measure_data(self) -> MeasureData:

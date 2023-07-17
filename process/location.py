@@ -63,5 +63,3 @@ class Location:
         for index in range(len(anthor_node_configure)):
             self.position[index][0] = anthor_node_configure[index][0]
             self.position[index][1] = anthor_node_configure[index][1]
-
-
