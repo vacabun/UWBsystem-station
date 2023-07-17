@@ -56,7 +56,6 @@ def main_service(com, baud):
             rev = ser.read()
             for c in rev:
                 if measure_data := data_analyze.analyze(c):
-                    print(measure_data)
                     q.put(measure_data)
         except Exception as e:
             print(e)

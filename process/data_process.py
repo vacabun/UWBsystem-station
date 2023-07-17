@@ -86,11 +86,11 @@ def process_measure_data(measure_data, sc):
     if len(measure_data_dict[label_address]) >= 4:
         if res := cal_position(label_address):
             process_res(res[0], res[1], res[2], res[3], res[4], res[5], sc)
-        # clean res data list
-        measure_data_dict[label_address] = []
+            # clean res data list
+            measure_data_dict[label_address] = []
 
 
-def process_res(x, y, frame_num, label_address, scenario, level , sc):
+def process_res(x, y, frame_num, label_address, scenario, level, sc):
     global label_type
     with open("res.csv", mode="a", encoding="utf-8-sig", newline="") as f:
         writer = csv.writer(f)
@@ -134,7 +134,7 @@ def cal_position(label_address: int):
 
     # group addresses
     address_list_groups = {}
-    for key , value in anchors_groups.items():
+    for key, value in anchors_groups.items():
         address_list_groups[key] = []
         for anchor in value['anchors']:
             if anchor['id'] in address_list_all:
@@ -143,11 +143,11 @@ def cal_position(label_address: int):
     # select the group with a large number
     address_list = []
     group_str = ''
-    for key , value in anchors_groups.items():
+    for key, value in anchors_groups.items():
         if len(address_list_groups[key]) > len(address_list):
             address_list = address_list_groups[key]
             group_str = key
-    
+
     if len(address_list) < 4:
         return None
     elif len(address_list) >= 4:
@@ -211,5 +211,5 @@ def get_near_4_address(address_list, label_address):
                     index = j
                     d = distance_list[j]
         if index >= 0:
-           res.append(address_list[index])
+            res.append(address_list[index])
     return res
